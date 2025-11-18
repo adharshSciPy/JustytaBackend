@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./mongoDB/config.js";
 
+import SuperAdminRouter from "./routes/superAdminRouter.js"
+
 // Load .env
 dotenv.config();
 
@@ -16,6 +18,8 @@ app.use(express.json());
 
 // DB Connection
 connectDB();
+
+app.use("/api/v1/superAdmin", SuperAdminRouter)
 
 // Server start
 const PORT = process.env.PORT || 8000;
