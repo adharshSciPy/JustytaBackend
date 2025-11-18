@@ -241,4 +241,167 @@ const registerFirmAdmin = async (req, res) => {
     });
   }
 };
-export{registerFirmAdmin}
+ const firmAdminLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+    const admin = await FirmAdmin.findOne({ email });
+    if (!admin) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+    const isPasswordValid = await admin.isPasswordCorrect(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+    if (admin.status === "pending_verification") {
+      return res.status(403).json({
+        success: false,
+        message: "Your account is not verified yet.",
+      });
+    }
+    if (admin.status === "rejected") {
+      return res.status(403).json({
+        success: false,
+        message: "Your registration was rejected. Contact support.",
+      });
+    }
+    if (!admin.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account is inactive. Please contact support.",
+      });
+    }
+    const accessToken = admin.generateAccessToken();
+    const refreshToken = admin.generateRefreshToken();
+    admin.lastLogin = new Date();
+    await admin.save({ validateBeforeSave: false });
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+
+      tokens: {
+        accessToken,
+        refreshToken,
+      },
+
+      data: {
+        _id: admin._id,
+        email: admin.email,
+        role: admin.role,
+        lastLogin: admin.lastLogin,
+        status: admin.status,
+        isActive: admin.isActive,
+
+        firmDetails: admin.firmDetails,
+        ownerDetails: admin.ownerDetails,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Error in firmAdminLogin:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error during login",
+      error: err.message,
+    });
+  }
+};
+const getAllLawFirms = async (req, res) => {
+  try {
+    const {
+      emirate,
+      subscriptionPlan,
+      page = 1,
+      limit = 10,
+      search = ""
+    } = req.query;
+
+    // Convert pagination to numbers
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
+
+    // Build filters
+    const query = {};
+
+    if (emirate) query["firmDetails.emirate"] = emirate;
+    if (subscriptionPlan) query["firmDetails.subscriptionPlan"] = subscriptionPlan;
+
+    // Search by firm name or owner name
+    if (search) {
+      query.$or = [
+        { "firmDetails.lawFirmName": { $regex: search, $options: "i" } },
+        { "ownerDetails.fullName": { $regex: search, $options: "i" } }
+      ];
+    }
+
+    const lawFirms = await FirmAdmin
+      .find(query)
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .select("-password -refreshToken"); // hide sensitive fields
+
+    const total = await FirmAdmin.countDocuments(query);
+
+    return res.status(200).json({
+      success: true,
+      total,
+      page: pageNum,
+      pages: Math.ceil(total / limitNum),
+      data: lawFirms
+    });
+  } catch (err) {
+    console.error("Error fetching law firms:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch law firms",
+      error: err.message
+    });
+  }
+};
+const getLawFirmById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid law firm ID format",
+      });
+    }
+    const firm = await FirmAdmin.findById(id).select(
+      "-password -refreshToken"
+    );
+
+    if (!firm) {
+      return res.status(404).json({
+        success: false,
+        message: "Law firm not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: firm,
+    });
+  } catch (err) {
+    console.error("Error fetching law firm by ID:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch law firm",
+      error: err.message,
+    });
+  }
+};
+
+export{registerFirmAdmin,firmAdminLogin,getAllLawFirms,getLawFirmById}

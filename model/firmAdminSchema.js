@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config();
 const FIRM_ADMIN_ROLE=process.env.FIRM_ADMIN_ROLE || 800
