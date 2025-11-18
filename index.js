@@ -6,6 +6,11 @@ import connectDB from "./mongoDB/config.js";
 
 // import SuperAdminRouter from "./routes/superAdminRouter.js"
 import emailAccountRouter from "./routes/accountRoutes.js";
+import superAdminRouter from "./routes/superAdminRouter.js";
+
+
+
+
 
 // Load .env
 dotenv.config();
@@ -21,7 +26,14 @@ app.use(express.json());
 connectDB();
 
 // app.use("/api/v1/superAdmin", SuperAdminRouter)
-app.use("api/v1/emailSettings",emailAccountRouter)
+app.use("/api/v1/emailSettings", emailAccountRouter)
+app.use("/api/v1/superAdmin", superAdminRouter)
+
+
+
+
+
+
 // Server start
 const PORT = process.env.PORT || 8000;
 
