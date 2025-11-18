@@ -14,13 +14,20 @@
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "body-parser": "^2.2.0",
+    "bullmq": "^5.63.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "imapflow": "^1.1.1",
+    "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
     "libphonenumber-js": "^1.12.26",
+    "mailparser": "^3.9.0",
     "mongodb": "^7.0.0",
     "mongoose": "^8.19.4",
+    "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.10",
     "nodemon": "^3.1.11"
   }
 }
