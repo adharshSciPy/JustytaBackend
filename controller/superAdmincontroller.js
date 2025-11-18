@@ -1,4 +1,4 @@
-import SuperAdmin from "../model/superAdminSchema";
+import SuperAdmin from "../model/superAdminSchema.js";
 import { emailValidator, passwordValidator, nameValidator, phoneValidator } from "../utils/validator.js";
 
 const register = async (req, res) => {
