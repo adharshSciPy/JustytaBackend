@@ -1,6 +1,9 @@
 import mongoose, { Schema } from "mongoose";
 import { isValidNumber } from "libphonenumber-js";
-const Super_Admin = process.env.Super_Admin;
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+
+const SUPERADMIN_ROLE = process.env.SUPERADMIN_ROLE || "100";
 
 const superAdminSchema = new Schema({
     name: {
@@ -9,8 +12,7 @@ const superAdminSchema = new Schema({
     },
     role: {
         type: String,
-        required: true,
-        default: Super_Admin
+        default: SUPERADMIN_ROLE
     },
     email: {
         type: String,
@@ -63,7 +65,7 @@ superAdminSchema.methods.generateRefreshToken = function () {
 };
 
 // 🔐 PASSWORD CHECK METHOD
-superAdminSchema.methods.matchPassword = async function (enteredPassword) {
+superAdminSchema.methods.isPasswordCorrect = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
