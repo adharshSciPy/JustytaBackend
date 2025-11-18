@@ -1,24 +1,23 @@
+
 const emailValidator = (email) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
 };
 
 const passwordValidator = (password) => {
-    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+[\]{}|;:',.<>?]).{8,64}$/;
-    return regex.test(password);
+  const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+[\]{}|;:',.<>?]).{8,64}$/;
+  return regex.test(password);
 };
 
 const nameValidator = (name) => {
-    return typeof name === "string" && name.trim().length >= 2 && name.trim().length <= 50;
+  const regex = /^[A-Za-z\u0600-\u06FF\s'-]{2,50}$/;
+  return regex.test(name?.trim());
 };
 
-const phoneValidator = (phone) => {
-    phone = phone.replace(/[\s\-()]/g, "");
 
-    const regex = /^(?:(?:\+?971|00971|0)?(?:50|52|54|55|56|58)\d{7}|(?:\+?971|00971|0)?(?:2|3|4|6|7|9)\d{7}|600\d{6}|800\d{3,6}|900\d{6})$/;
-
-    return regex.test(phone);
+const phoneValidator = (phoneNumber) => {
+  const regex =  /^(?:\+971|0)?5[024568]\d{7}$/;
+  return regex.test(phoneNumber);
 };
-
 
 export { emailValidator, passwordValidator, nameValidator, phoneValidator };
