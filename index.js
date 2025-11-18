@@ -4,7 +4,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./mongoDB/config.js";
 
-import SuperAdminRouter from "./routes/superAdminRouter.js"
+// import SuperAdminRouter from "./routes/superAdminRouter.js"
+import emailAccountRouter from "./routes/accountRoutes.js";
 
 // Load .env
 dotenv.config();
@@ -19,8 +20,8 @@ app.use(express.json());
 // DB Connection
 connectDB();
 
-app.use("/api/v1/superAdmin", SuperAdminRouter)
-
+// app.use("/api/v1/superAdmin", SuperAdminRouter)
+app.use("api/v1/emailSettings",emailAccountRouter)
 // Server start
 const PORT = process.env.PORT || 8000;
 
