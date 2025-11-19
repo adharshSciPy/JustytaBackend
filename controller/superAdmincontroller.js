@@ -1,5 +1,6 @@
 import SuperAdmin from "../model/superAdminSchema.js";
 import { emailValidator, passwordValidator, nameValidator, phoneValidator } from "../utils/validator.js";
+import crypto from "crypto"
 
 const register = async (req, res) => {
     try {
@@ -92,6 +93,75 @@ const login = async (req, res) => {
     }
 }
 
+const requestPasswordReset = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!emailValidator(email)) {
+            return res.status(400).json({ message: "Invalid Email Format" });
+        }
+
+        const superAdmin = await SuperAdmin.findOne({ email });
+        if (!superAdmin) {
+            return res.status(404).json({ message: "Email not found" });
+        }
+
+        // Generate token
+        const resetToken = crypto.randomBytes(32).toString("hex");
+
+        superAdmin.resetPasswordToken = resetToken;
+        superAdmin.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+        await superAdmin.save();
+
+        // TODO: send email using nodemailer/sendgrid etc.
+        // Example reset link:
+        const resetLink = `https://yourfrontend.com/reset-password/${resetToken}`;
+
+        res.status(200).json({
+            message: "Password reset link generated",
+            resetLink, // Remove this in production and send via email
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+const resetPassword = async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { newPassword } = req.body;
+
+        if (!passwordValidator(newPassword)) {
+            return res.status(400).json({ message: "Invalid password format" });
+        }
+
+        const superAdmin = await SuperAdmin.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: Date.now() } // Token not expired
+        });
+
+        if (!superAdmin) {
+            return res.status(400).json({ message: "Invalid or expired token" });
+        }
+
+        // Update password
+        superAdmin.password = newPassword;
+        superAdmin.resetPasswordToken = undefined;
+        superAdmin.resetPasswordExpires = undefined;
+
+        await superAdmin.save();
+
+        res.status(200).json({ message: "Password reset successful" });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
 export {
-    register, login
+    register, login, requestPasswordReset, resetPassword
 }
