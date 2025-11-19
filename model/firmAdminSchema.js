@@ -135,6 +135,27 @@ const firmAdminSchema = new Schema(
       enum: ["pending_verification", "approved", "rejected"],
       default: "pending_verification",
     },
+    staffs: {
+  HR: [
+    { type: Schema.Types.ObjectId, ref: "FirmStaff" }
+  ],
+  Secretary: [
+    { type: Schema.Types.ObjectId, ref: "FirmStaff" }
+  ],
+  LegalResearcher: [
+    { type: Schema.Types.ObjectId, ref: "FirmStaff" }
+  ],
+  Accountant: [
+    { type: Schema.Types.ObjectId, ref: "FirmStaff" }
+  ],
+  ResearchAssistant: [
+    { type: Schema.Types.ObjectId, ref: "FirmStaff" }
+  ],
+  Lawyer: [
+    { type: Schema.Types.ObjectId, ref: "FirmStaff" }
+  ],
+}
+,
 
     isActive: {
       type: Boolean,

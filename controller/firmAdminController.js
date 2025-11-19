@@ -6,6 +6,7 @@ import {
   phoneValidator,
   passwordValidator,
 } from "../utils/validator.js";
+import FirmStaff from "../model/firmStaffSchema.js";
 
 const isEmpty = (v) => !v || v === "" || v === undefined || v === null;
 
@@ -403,5 +404,247 @@ const getLawFirmById = async (req, res) => {
     });
   }
 };
+const registerStaff = async (req, res) => {
+  try {
+    const {
+      firmId,
+      fullName,
+      dob,
+      gender,
+      maritalStatus,
 
-export{registerFirmAdmin,firmAdminLogin,getAllLawFirms,getLawFirmById}
+      workEmail,
+      personalEmail,
+      phone,
+      address,
+
+      department,
+      managerId,
+
+      nationalId,
+
+      lawyerIdUAE,
+      barMembershipNumber,
+      practicingSince,
+      specialization,
+
+      email,
+      password,
+    } = req.body;
+
+    if (!firmId)
+      return res.status(400).json({ success: false, message: "firmId required" });
+
+    const firm = await FirmAdmin.findById(firmId);
+    if (!firm)
+      return res.status(404).json({ success: false, message: "Firm not found" });
+
+    const files = req.files;
+
+    const lawyerFields = [
+      "lawyerIdUAE",
+      "barMembershipNumber",
+      "practicingSince",
+      "specialization",
+    ];
+
+    const lawyerFileFields = [
+      "lawyerIdCardFile",
+      "barMembershipCardFile",
+      "specializationFiles",
+    ];
+
+    if (department !== "Lawyer") {
+      for (const field of lawyerFileFields) {
+        if (files?.[field]) {
+          return res.status(400).json({
+            success: false,
+            message: `${field} is allowed only for Lawyer department`,
+          });
+        }
+      }
+
+      lawyerFields.forEach((f) => delete req.body[f]);
+    }
+
+    const staffData = {
+      firmId,
+      personal: { fullName, dob, gender, maritalStatus },
+
+      nationalId,
+
+      contact: {
+        workEmail,
+        personalEmail,
+        phone,
+        address,
+      },
+
+      employment: {
+        department,
+        managerId,
+      },
+
+      email,
+      password,
+    };
+
+    if (department === "Lawyer") {
+      staffData.lawyerIdUAE = lawyerIdUAE;
+      staffData.barMembershipNumber = barMembershipNumber;
+      staffData.practicingSince = practicingSince;
+      staffData.specialization = specialization ? JSON.parse(specialization) : [];
+    }
+
+    // NORMALIZE PATHS (Fix)
+    const normalize = (p) => p.replace(/\\/g, "/");
+
+    if (files?.passportFile)
+      staffData.passportFile = normalize(files.passportFile[0].path);
+
+    if (files?.emiratesIdFrontFile)
+      staffData.emiratesIdFrontFile = normalize(files.emiratesIdFrontFile[0].path);
+
+    if (files?.emiratesIdBackFile)
+      staffData.emiratesIdBackFile = normalize(files.emiratesIdBackFile[0].path);
+
+    if (files?.visaFile)
+      staffData.visaFile = normalize(files.visaFile[0].path);
+
+    if (department === "Lawyer") {
+      if (files?.lawyerIdCardFile)
+        staffData.lawyerIdCardFile = normalize(files.lawyerIdCardFile[0].path);
+
+      if (files?.barMembershipCardFile)
+        staffData.barMembershipCardFile = normalize(files.barMembershipCardFile[0].path);
+
+      if (files?.specializationFiles)
+        staffData.specializationFiles = files.specializationFiles.map((f) =>
+          normalize(f.path)
+        );
+    }
+
+    const staff = await FirmStaff.create(staffData);
+
+    const key = department.replace(/\s+/g, "");
+
+    if (firm.staffs[key]) {
+      firm.staffs[key].push(staff._id);
+    } else {
+      firm.staffs[key] = [staff._id];
+    }
+
+    await firm.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Staff registered successfully",
+      staff,
+      firm,
+      employeeNumber: staff.employment.employeeNumber,
+    });
+
+  } catch (err) {
+    console.error("Register Staff Error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+const getFirmStaffs = async (req, res) => {
+  try {
+    const { id:firmId } = req.params;
+    const { department, page = 1, limit = 10, search = "", staffId } = req.query;
+
+    if (!firmId) {
+      return res.status(400).json({
+        success: false,
+        message: "firmId is required",
+      });
+    }
+
+    // 1️⃣ Fetch firm with all relations
+    const firm = await FirmAdmin.findById(firmId).populate({
+      path: Object.keys(FirmAdmin.schema.paths.staffs.schema.paths),
+      model: "FirmStaff",
+    });
+
+    if (!firm) {
+      return res.status(404).json({
+        success: false,
+        message: "Firm not found",
+      });
+    }
+
+    // 2️⃣ If staffId passed -> return that staff only
+    if (staffId) {
+      const allStaffs = Object.values(firm.staffs).flat();
+      const staff = allStaffs.find((s) => s._id.toString() === staffId);
+
+      if (!staff) {
+        return res.status(404).json({
+          success: false,
+          message: "Staff not found inside this firm",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        staff,
+      });
+    }
+
+    // 3️⃣ Get department staff or all staff
+    let staffList = [];
+
+    if (department) {
+      if (!firm.staffs[department]) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid department",
+        });
+      }
+
+      staffList = firm.staffs[department]; // Only this department
+    } else {
+      // Merge ALL depts
+      staffList = Object.values(firm.staffs).flat();
+    }
+
+    // 4️⃣ Search by employeeNumber (employment.employeeNumber)
+    if (search) {
+      staffList = staffList.filter((staff) =>
+        staff.employment.employeeNumber
+          ?.toLowerCase()
+          .includes(search.toLowerCase())
+      );
+    }
+
+    // 5️⃣ Pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+
+    const paginatedData = staffList.slice(startIndex, endIndex);
+
+    return res.status(200).json({
+      success: true,
+      totalStaff: staffList.length,
+      page: Number(page),
+      limit: Number(limit),
+      department: department || "All",
+      result: paginatedData,
+    });
+  } catch (err) {
+    console.error("Get Firm Staffs Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+
+
+
+
+
+
+export{registerFirmAdmin,firmAdminLogin,getAllLawFirms,getLawFirmById,registerStaff,getFirmStaffs}
