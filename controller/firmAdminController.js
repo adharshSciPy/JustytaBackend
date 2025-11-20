@@ -551,7 +551,7 @@ const registerStaff = async (req, res) => {
 };
 const getFirmStaffs = async (req, res) => {
   try {
-    const { id:firmId } = req.params;
+    const { id: firmId } = req.params;
     const { department, page = 1, limit = 10, search = "", staffId } = req.query;
 
     if (!firmId) {
@@ -561,12 +561,15 @@ const getFirmStaffs = async (req, res) => {
       });
     }
 
-    // 1️⃣ Fetch firm with all relations
-    const firm = await FirmAdmin.findById(firmId).populate({
-      path: Object.keys(FirmAdmin.schema.paths.staffs.schema.paths),
+    // Prepare department paths
+    const departments = Object.keys(FirmAdmin.schema.obj.staffs);
+    const populatePaths = departments.map((dep) => ({
+      path: `staffs.${dep}`,
       model: "FirmStaff",
-    });
+    }));
 
+    // Fetch firm + populate all staff
+    const firm = await FirmAdmin.findById(firmId).populate(populatePaths);
     if (!firm) {
       return res.status(404).json({
         success: false,
@@ -574,7 +577,7 @@ const getFirmStaffs = async (req, res) => {
       });
     }
 
-    // 2️⃣ If staffId passed -> return that staff only
+    // If specific staffId requested
     if (staffId) {
       const allStaffs = Object.values(firm.staffs).flat();
       const staff = allStaffs.find((s) => s._id.toString() === staffId);
@@ -592,37 +595,31 @@ const getFirmStaffs = async (req, res) => {
       });
     }
 
-    // 3️⃣ Get department staff or all staff
-    let staffList = [];
+    // Filter by department or all
+    let staffList = department
+      ? firm.staffs[department] || []
+      : Object.values(firm.staffs).flat();
 
-    if (department) {
-      if (!firm.staffs[department]) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid department",
-        });
-      }
-
-      staffList = firm.staffs[department]; // Only this department
-    } else {
-      // Merge ALL depts
-      staffList = Object.values(firm.staffs).flat();
-    }
-
-    // 4️⃣ Search by employeeNumber (employment.employeeNumber)
+    // Search by employeeNumber
     if (search) {
+      const keyword = search.toLowerCase();
       staffList = staffList.filter((staff) =>
-        staff.employment.employeeNumber
-          ?.toLowerCase()
-          .includes(search.toLowerCase())
+        staff.employment?.employeeNumber?.toLowerCase().includes(keyword)
       );
     }
 
-    // 5️⃣ Pagination
-    const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
+    // Add decrypted password ONLY for roles 800 / 900
+    if (req.user && (req.user.role === 800 || req.user.role === 900)) {
+      staffList = staffList.map((staff) => {
+        const plain = staff.toObject();
+        plain.decryptedPassword = staff.getDecryptedPassword();
+        return plain;
+      });
+    }
 
-    const paginatedData = staffList.slice(startIndex, endIndex);
+    // Pagination
+    const startIndex = (page - 1) * limit;
+    const paginatedData = staffList.slice(startIndex, startIndex + Number(limit));
 
     return res.status(200).json({
       success: true,
@@ -632,6 +629,7 @@ const getFirmStaffs = async (req, res) => {
       department: department || "All",
       result: paginatedData,
     });
+
   } catch (err) {
     console.error("Get Firm Staffs Error:", err);
     return res.status(500).json({
@@ -640,6 +638,9 @@ const getFirmStaffs = async (req, res) => {
     });
   }
 };
+
+
+
 
 
 
